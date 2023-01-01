@@ -6,13 +6,34 @@ services:
     container_name: spell_and_text_mongodb
     image: bitnami/mongodb:latest
     ports:
-      - "27018:27017"
+      - "27017:27017"
     volumes:
       - spell_and_text_mongodb_data:/mongodb
       - ./volume/mongodb-persistence_skill:/mongodb
     networks:
+      - authentication_network
+      - spell_and_text_network
+
+  authentication_management:
+    build:
+      context: ./authentication_management
+      dockerfile: AuthDockerfile
+    container_name: "authentication_management"
+    hostname: "authentication_management"
+    command: bash -c "uvicorn authentication_management.main:auth_app --host 0.0.0.0 --port 7005  --reload"
+    volumes:
+      - ./:/authentication_management
+    ports:
+      - "7005:7005"
+    env_file: authentication_management/.env
+    networks:
       - spell_and_text_network
       - authentication_network
+    restart: always
+    depends_on:
+      - authentication_redis
+      - spell_and_text_mongodb
+      - authentication_rabbitmq
 
   spell_and_text:
     build:
@@ -32,6 +53,29 @@ services:
     depends_on:
       - authentication_redis
       - spell_and_text_mongodb
+  
+  authentication_rabbitmq:
+    hostname: "authentication_rabbitmq"
+    container_name: "authentication_rabbitmq"
+    image: "rabbitmq:3-management"
+    env_file:
+      - auth-rabbitmq.env
+    networks:
+      - authentication_network
+    ports:
+      - "4370:4369"
+      - "5673:5672"
+      - "25673:25672"
+      - "15673:15672"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://authentication_rabbitmq:15673" ]
+      interval: 30s
+      timeout: 20s
+      retries: 5
+    volumes:
+      - authentication_rabbitmq_data:/var/lib/rabbitmq/
+      - ./volume/authentication_rabbitmq_data:/var/lib/rabbitmq/
+    restart: always
 
   authentication_redis:
     hostname: "authentication_redis"
@@ -44,8 +88,8 @@ services:
       - authentication_network
       - spell_and_text_network
     ports:
-      - "6380:6379"
-    restart: on-failure
+      - "6379:6379"
+    restart: always
     volumes:
       - authentication_redis_data:/data
       - ./volume/authentication_redis_data:/data
@@ -53,30 +97,52 @@ services:
       - /etc/localtime:/etc/localtime:ro
     depends_on:
       - spell_and_text_mongodb
-
-  authentication_management:
+      - authentication_rabbitmq
+  
+  authentication_celery_flower:
+    container_name: "authentication_celery_flower"
+    image: mher/flower:1.2
+    restart: always
+    env_file:
+      - auth-celery-flower.env
+    ports:
+      - "5558:5555"
+    depends_on:
+      - authentication_rabbitmq
+      - authentication_redis
+      - email_workers
+    networks:
+      - authentication_network
+    volumes:
+      - authentication_flower_data:/data
+      - ./volume/authentication_flower_data:/data
+  
+  email_workers:
+    hostname: "email_workers"
+    container_name: "email_workers"
     build:
       context: ./authentication_management
       dockerfile: AuthDockerfile
-    container_name: "authentication_management"
-    hostname: "authentication_management"
-    command: bash -c "uvicorn authentication_management.main:auth_app --host 0.0.0.0 --port 7005  --reload"
+    command: "celery -A authentication_management.utils.tasks.celery worker -n email-worker --loglevel=info --logfile=authentication_management/logs/email_worker.logs -Q send_verify_email,send_change_password_email"
+    env_file: email-worker.env
     volumes:
       - ./:/authentication_management
-    ports:
-      - "7005:7005"
-    env_file: authentication_management/.env
+    links:
+      - authentication_rabbitmq
+    depends_on:
+      - authentication_rabbitmq
+      - authentication_redis
     networks:
       - authentication_network
     restart: always
-    depends_on:
-      - authentication_redis
-      - spell_and_text_mongodb
 
 volumes:
   spell_and_text:
   spell_and_text_mongodb_data:
   authentication_redis_data:
+  authentication_flower_data:
+  authentication_rabbitmq_data:
+
 networks:
   authentication_network:
     driver: bridge

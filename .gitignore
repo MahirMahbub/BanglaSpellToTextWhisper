@@ -1,1 +1,4 @@
 /spell_and_text/.env
+/auth-celery-flower.env
+/auth-rabbitmq.env
+/email-worker.env

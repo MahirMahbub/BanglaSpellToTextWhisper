@@ -6,9 +6,9 @@ from pydantic import EmailStr
 from authentication_management.utils.email import EmailGenerator
 
 celery_app: Celery = Celery(
-    "email-worker",
-    backend="redis://:Pass@123@auth_redis:6379/0",
-    broker="amqp://user:Pass@123@auth_rabbitmq:5672//"
+    "email-workers",
+    backend=os.getenv("REDIS_HOST"),
+    broker=os.getenv("AMQP_URL"),
 )
 celery_app.conf.task_routes = {
     "authentication_management.utils.tasks.send_account_verify_email": "send_verify_email",
