@@ -63,10 +63,10 @@ services:
     networks:
       - authentication_network
     ports:
-      - "4370:4369"
-      - "5673:5672"
-      - "25673:25672"
-      - "15673:15672"
+      - "4369:4369"
+      - "5672:5672"
+      - "25672:25672"
+      - "15672:15672"
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://authentication_rabbitmq:15673" ]
       interval: 30s
@@ -106,7 +106,7 @@ services:
     env_file:
       - auth-celery-flower.env
     ports:
-      - "5558:5555"
+      - "5557:5555"
     depends_on:
       - authentication_rabbitmq
       - authentication_redis
@@ -123,7 +123,7 @@ services:
     build:
       context: ./authentication_management
       dockerfile: AuthDockerfile
-    command: "celery -A authentication_management.utils.tasks.celery worker -n email-worker --loglevel=info --logfile=authentication_management/logs/email_worker.logs -Q send_verify_email,send_change_password_email"
+    command: "celery -A authentication_management.utils.tasks.celery worker -n email-worker --loglevel=info --logfile=authentication_management/logs/email_worker.log -Q send_verify_email,send_change_password_email"
     env_file: email-worker.env
     volumes:
       - ./:/authentication_management

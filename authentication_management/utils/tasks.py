@@ -6,7 +6,7 @@ from pydantic import EmailStr
 from authentication_management.utils.email import EmailGenerator
 
 celery_app: Celery = Celery(
-    "email-workers",
+    "email-worker",
     backend=os.getenv("REDIS_HOST"),
     broker=os.getenv("AMQP_URL"),
 )
