@@ -1,0 +1,84 @@
+version: '3'
+
+services:
+
+  spell_and_text_mongodb:
+    container_name: spell_and_text_mongodb
+    image: bitnami/mongodb:latest
+    ports:
+      - "27018:27017"
+    volumes:
+      - spell_and_text_mongodb_data:/mongodb
+      - ./volume/mongodb-persistence_skill:/mongodb
+    networks:
+      - spell_and_text_network
+      - authentication_network
+
+  spell_and_text:
+    build:
+      context: ./spell_and_text
+      dockerfile: SpellAndTextDockerfile
+    container_name: "spell_and_text"
+    hostname: "spell_and_text"
+    command: bash -c "uvicorn spell_and_text.main:spell_and_text_app --host 0.0.0.0 --port 7006 --reload"
+    volumes:
+      - ./:/spell_and_text
+    ports:
+      - "7006:7006"
+    env_file: spell_and_text/.env
+    networks:
+      - spell_and_text_network
+    restart: always
+    depends_on:
+      - authentication_redis
+      - spell_and_text_mongodb
+
+  authentication_redis:
+    hostname: "authentication_redis"
+    container_name: "authentication_redis"
+    image: "redis:latest"
+    command: /bin/sh -c "redis-server --requirepass $$REDIS_PASSWORD"
+    env_file:
+      - auth-redis.env
+    networks:
+      - authentication_network
+      - spell_and_text_network
+    ports:
+      - "6380:6379"
+    restart: on-failure
+    volumes:
+      - authentication_redis_data:/data
+      - ./volume/authentication_redis_data:/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    depends_on:
+      - spell_and_text_mongodb
+
+  authentication_management:
+    build:
+      context: ./authentication_management
+      dockerfile: AuthDockerfile
+    container_name: "authentication_management"
+    hostname: "authentication_management"
+    command: bash -c "uvicorn authentication_management.main:auth_app --host 0.0.0.0 --port 7005  --reload"
+    volumes:
+      - ./:/authentication_management
+    ports:
+      - "7005:7005"
+    env_file: authentication_management/.env
+    networks:
+      - authentication_network
+    restart: always
+    depends_on:
+      - authentication_redis
+      - spell_and_text_mongodb
+
+volumes:
+  spell_and_text:
+  spell_and_text_mongodb_data:
+  authentication_redis_data:
+networks:
+  authentication_network:
+    driver: bridge
+  spell_and_text_network:
+    driver: bridge

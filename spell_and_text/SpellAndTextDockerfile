@@ -1,0 +1,9 @@
+FROM python:3.10.1
+ENV PYTHONUNBUFFERED 1
+RUN mkdir /spell_and_text
+WORKDIR /spell_and_text
+COPY . /spell_and_text
+#COPY requirements.txt /app
+RUN pip install --upgrade pip
+# RUN #apk install python3-dotenv
+RUN pip install --no-cache-dir -r requirements.txt

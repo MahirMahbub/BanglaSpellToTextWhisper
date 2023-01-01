@@ -1,0 +1,9 @@
+FROM python:3.10.1
+ENV PYTHONUNBUFFERED 1
+RUN mkdir /authentication_management
+WORKDIR /authentication_management
+COPY . /authentication_management
+#COPY requirements.txt /app
+RUN pip install --upgrade pip
+# RUN #apk install python3-dotenv
+RUN pip install --no-cache-dir -r requirements.txt

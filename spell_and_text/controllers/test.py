@@ -1,0 +1,31 @@
+import os
+
+import aioredis
+from fastapi import APIRouter, Depends, Request
+
+from spell_and_text.utils.auth_manager import JWTBearer
+from spell_and_text.utils.logger import get_logger
+
+# from skill_management.models.plan import Plan
+
+test_router: APIRouter = APIRouter()
+logger = get_logger()
+
+
+@test_router.get("/hello/{name}")
+async def say_hello(request: Request, name: str, user_id: str = Depends(JWTBearer())):
+    # plan = Plan(skill_id=1)
+    # await plan.insert()
+    # logger.info("Testing Route")
+    # return {"message": f"Hello {name}", "plan": plan.id}
+    # redis = await aioredis.from_url(
+    #     os.getenv("REDIS_AUTH_URL"),
+    #     password=os.getenv("REDIS_PASSWORD"),
+    #     encoding="utf-8",
+    #     db=os.getenv("REDIS_USER_DB"),
+    #     decode_responses=True,
+    # )
+    # await request.app.state.redis_connection.set("my-key", "value")
+    val = await request.app.state.redis_connection.hgetall(user_id)
+    print(val)
+    return val
