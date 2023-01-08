@@ -2,3 +2,4 @@
 /auth-celery-flower.env
 /auth-rabbitmq.env
 /email-worker.env
+/auth-redis.env
